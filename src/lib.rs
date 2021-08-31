@@ -1,34 +1,23 @@
-#![cfg_attr(not(stage0), deny(warnings))]
-#![cfg_attr(not(test), no_std)]
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
-#![crate_name = "compiler_builtins"]
-#![crate_type = "rlib"]
-#![doc(
-    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
-    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-    html_root_url = "https://doc.rust-lang.org/nightly/",
-    html_playground_url = "https://play.rust-lang.org/",
-    test(attr(deny(warnings)))
-)]
-#![feature(asm)]
+#![cfg_attr(not(feature = "no-asm"), feature(asm))]
+#![feature(abi_unadjusted)]
+#![cfg_attr(not(feature = "no-asm"), feature(global_asm))]
+#![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
+#![feature(lang_items)]
+#![feature(linkage)]
 #![feature(naked_functions)]
 #![feature(repr_simd)]
-#![feature(abi_unadjusted)]
-#![feature(linkage)]
-#![feature(lang_items)]
-#![allow(unused_features)]
 #![no_builtins]
-#![cfg_attr(feature = "compiler-builtins", feature(staged_api))]
-#![cfg_attr(
-    feature = "compiler-builtins",
-    unstable(
-        feature = "compiler_builtins_lib",
-        reason = "Compiler builtins. Will never become stable.",
-        issue = "0"
-    )
-)]
+#![no_std]
+#![allow(unused_features)]
+// We use `u128` in a whole bunch of places which we currently agree with the
+// compiler on ABIs and such, so we should be "good enough" for now and changes
+// to the `u128` ABI will be reflected here.
+#![allow(improper_ctypes, improper_ctypes_definitions)]
+// `mem::swap` cannot be used because it may generate references to memcpy in unoptimized code.
+#![allow(clippy::manual_swap)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
@@ -42,10 +31,6 @@
 
 #[cfg(test)]
 extern crate core;
-
-fn abort() -> ! {
-    unsafe { core::intrinsics::abort() }
-}
 
 #[macro_use]
 mod macros;
@@ -64,7 +49,11 @@ pub mod mem;
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
-#[cfg(all(kernel_user_helpers, target_os = "linux", target_arch = "arm"))]
+#[cfg(all(
+    kernel_user_helpers,
+    any(target_os = "linux", target_os = "android"),
+    target_arch = "arm"
+))]
 pub mod arm_linux;
 
 #[cfg(any(target_arch = "riscv32"))]

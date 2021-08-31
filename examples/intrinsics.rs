@@ -6,8 +6,7 @@
 #![allow(unused_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
-#![feature(asm)]
-#![feature(compiler_builtins_lib)]
+#![feature(bench_black_box)]
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]
@@ -15,7 +14,7 @@
 
 extern crate panic_handler;
 
-#[cfg(all(not(thumb), not(windows)))]
+#[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
 #[link(name = "c")]
 extern "C" {}
 
@@ -277,13 +276,8 @@ mod intrinsics {
 }
 
 fn run() {
+    use core::hint::black_box as bb;
     use intrinsics::*;
-
-    // A copy of "test::black_box". Used to prevent LLVM from optimizing away the intrinsics during LTO
-    fn bb<T>(dummy: T) -> T {
-        unsafe { asm!("" : : "r"(&dummy)) }
-        dummy
-    }
 
     bb(aeabi_d2f(bb(2.)));
     bb(aeabi_d2i(bb(2.)));
@@ -341,17 +335,17 @@ fn run() {
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
     extern "C" {
-        fn rust_begin_unwind();
+        fn rust_begin_unwind(x: usize);
     }
     // if bb(false) {
     unsafe {
-        rust_begin_unwind();
+        rust_begin_unwind(0);
     }
     // }
 }
 
-fn something_with_a_dtor(f: &Fn()) {
-    struct A<'a>(&'a (Fn() + 'a));
+fn something_with_a_dtor(f: &dyn Fn()) {
+    struct A<'a>(&'a (dyn Fn() + 'a));
 
     impl<'a> Drop for A<'a> {
         fn drop(&mut self) {

@@ -1,11 +1,11 @@
 [package]
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "compiler_builtins"
-version = "0.1.16"
+version = "0.1.49"
 license = "MIT/Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/rust-lang-nursery/compiler-builtins"
-homepage = "https://github.com/rust-lang-nursery/compiler-builtins"
+repository = "https://github.com/rust-lang/compiler-builtins"
+homepage = "https://github.com/rust-lang/compiler-builtins"
 documentation = "https://docs.rs/compiler_builtins"
 description = """
 Compiler intrinsics used by the Rust compiler. Also available for other targets
@@ -44,6 +44,10 @@ default = ["compiler-builtins"]
 # implementations and also filling in unimplemented intrinsics
 c = ["cc"]
 
+# Workaround for the Cranelift codegen backend. Disables any implementations
+# which use inline assembly and fall back to pure Rust versions (if avalible).
+no-asm = []
+
 # Flag this library as the unstable compiler-builtins lib
 compiler-builtins = []
 
@@ -59,6 +63,10 @@ no-lang-items = []
 
 # Only used in the compiler's build system
 rustc-dep-of-std = ['compiler-builtins', 'core']
+
+# This makes certain traits and function specializations public that
+# are not normally public but are required by the `testcrate`
+public-test-deps = []
 
 [[example]]
 name = "intrinsics"

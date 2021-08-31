@@ -1,5 +1,21 @@
 //! Macros shared throughout the compiler-builtins implementation
 
+/// Changes the visibility to `pub` if feature "public-test-deps" is set
+#[cfg(not(feature = "public-test-deps"))]
+macro_rules! public_test_dep {
+    ($(#[$($meta:meta)*])* pub(crate) $ident:ident $($tokens:tt)*) => {
+        $(#[$($meta)*])* pub(crate) $ident $($tokens)*
+    };
+}
+
+/// Changes the visibility to `pub` if feature "public-test-deps" is set
+#[cfg(feature = "public-test-deps")]
+macro_rules! public_test_dep {
+    {$(#[$($meta:meta)*])* pub(crate) $ident:ident $($tokens:tt)*} => {
+        $(#[$($meta)*])* pub $ident $($tokens)*
+    };
+}
+
 /// The "main macro" used for defining intrinsics.
 ///
 /// The compiler-builtins library is super platform-specific with tons of crazy
@@ -165,26 +181,24 @@ macro_rules! intrinsics {
 
         $($rest:tt)*
     ) => (
-        #[cfg(all(windows, target_pointer_width = "64"))]
+        #[cfg(all(windows, target_arch = "x86_64"))]
         $(#[$($attr)*])*
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }
 
-        #[cfg(all(windows, target_pointer_width = "64"))]
+        #[cfg(all(windows, target_arch = "x86_64"))]
         pub mod $name {
-
-            intrinsics! {
-                pub extern $abi fn $name( $($argname: $ty),* )
-                    -> ::macros::win64_128bit_abi_hack::U64x2
-                {
-                    let e: $ret = super::$name($($argname),*);
-                    ::macros::win64_128bit_abi_hack::U64x2::from(e)
-                }
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern $abi fn $name( $($argname: $ty),* )
+                -> ::macros::win64_128bit_abi_hack::U64x2
+            {
+                let e: $ret = super::$name($($argname),*);
+                ::macros::win64_128bit_abi_hack::U64x2::from(e)
             }
         }
 
-        #[cfg(not(all(windows, target_pointer_width = "64")))]
+        #[cfg(not(all(windows, target_arch = "x86_64")))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
@@ -209,17 +223,23 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg(target_arch = "arm")]
-        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }
 
         #[cfg(target_arch = "arm")]
         pub mod $name {
-            intrinsics! {
-                pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
-                    super::$name($($argname),*)
-                }
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+                super::$name($($argname),*)
+            }
+        }
+
+        #[cfg(target_arch = "arm")]
+        pub mod $alias {
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
+                super::$name($($argname),*)
             }
         }
 
@@ -234,9 +254,15 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // This is the final catch-all rule. At this point we just generate an
+    // This is the final catch-all rule. At this point we generate an
     // intrinsic with a conditional `#[no_mangle]` directive to avoid
-    // interfereing with duplicate symbols and whatnot during testing.
+    // interfering with duplicate symbols and whatnot during testing.
+    //
+    // The implementation is placed in a separate module, to take advantage
+    // of the fact that rustc partitions functions into code generation
+    // units based on module they are defined in. As a result we will have
+    // a separate object file for each intrinsic. For further details see
+    // corresponding PR in rustc https://github.com/rust-lang/rust/pull/70846
     //
     // After the intrinsic is defined we just continue with the rest of the
     // input we were given.
@@ -249,9 +275,16 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         $(#[$($attr)*])*
-        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
+        }
+
+        pub mod $name {
+            $(#[$($attr)*])*
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+                super::$name($($argname),*)
+            }
         }
 
         intrinsics!($($rest)*);
@@ -267,30 +300,16 @@ pub mod win64_128bit_abi_hack {
 
     impl From<i128> for U64x2 {
         fn from(i: i128) -> U64x2 {
-            use int::LargeInt;
+            use int::DInt;
             let j = i as u128;
-            U64x2(j.low(), j.high())
+            U64x2(j.lo(), j.hi())
         }
     }
 
     impl From<u128> for U64x2 {
         fn from(i: u128) -> U64x2 {
-            use int::LargeInt;
-            U64x2(i.low(), i.high())
+            use int::DInt;
+            U64x2(i.lo(), i.hi())
         }
     }
-}
-
-macro_rules! u128_lang_items {
-    ($(
-        #[lang = $lang:tt]
-        pub fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
-            $($body:tt)*
-        }
-    )*) => ($(
-        #[cfg_attr(not(any(stage0, feature = "no-lang-items")), lang = $lang)]
-        pub fn $name( $($argname:  $ty),* ) -> $ret {
-            $($body)*
-        }
-    )*)
 }
