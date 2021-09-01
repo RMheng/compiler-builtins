@@ -428,7 +428,7 @@ mod c {
                 ("__fe_raise_inexact", "fp_mode.c"),
             ]);
 
-            if target_os != "windows" {
+            if target_os != "windows" && target_os != "optee" {
                 sources.extend(&[("__multc3", "multc3.c")]);
             }
         }
