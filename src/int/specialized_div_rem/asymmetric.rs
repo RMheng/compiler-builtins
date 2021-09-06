@@ -3,7 +3,8 @@
 /// assembly instruction that can divide a 128 bit integer by a 64 bit integer if the quotient fits
 /// in 64 bits. The 128 bit version of this algorithm would use that fast hardware division to
 /// construct a full 128 bit by 128 bit division.
-#[allow(unused_macros)]
+#[doc(hidden)]
+#[macro_export]
 macro_rules! impl_asymmetric {
     (
         $fn:ident, // name of the unsigned division function

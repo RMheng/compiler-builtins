@@ -11,9 +11,9 @@ pub mod mul;
 pub mod pow;
 pub mod sub;
 
-public_test_dep! {
 /// Trait for some basic operations on floats
-pub(crate) trait Float:
+#[doc(hidden)]
+pub trait Float:
     Copy
     + core::fmt::Debug
     + PartialEq
@@ -98,7 +98,6 @@ pub(crate) trait Float:
 
     /// Returns if `self` is subnormal
     fn is_subnormal(self) -> bool;
-}
 }
 
 macro_rules! float_impl {

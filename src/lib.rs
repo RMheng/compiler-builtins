@@ -41,13 +41,12 @@ pub mod int;
 #[cfg(any(
     all(target_arch = "wasm32", target_os = "unknown"),
     all(target_arch = "arm", target_os = "none"),
-    all(target_os = "optee", target_env = "trustzone"),
     all(target_vendor = "fortanix", target_env = "sgx")
 ))]
 pub mod math;
 pub mod mem;
 
-#[cfg(all(target_arch = "arm", not(target_os = "optee")))]
+#[cfg(target_arch = "arm")]
 pub mod arm;
 
 #[cfg(all(

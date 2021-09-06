@@ -1,21 +1,5 @@
 //! Macros shared throughout the compiler-builtins implementation
 
-/// Changes the visibility to `pub` if feature "public-test-deps" is set
-#[cfg(not(feature = "public-test-deps"))]
-macro_rules! public_test_dep {
-    ($(#[$($meta:meta)*])* pub(crate) $ident:ident $($tokens:tt)*) => {
-        $(#[$($meta)*])* pub(crate) $ident $($tokens)*
-    };
-}
-
-/// Changes the visibility to `pub` if feature "public-test-deps" is set
-#[cfg(feature = "public-test-deps")]
-macro_rules! public_test_dep {
-    {$(#[$($meta:meta)*])* pub(crate) $ident:ident $($tokens:tt)*} => {
-        $(#[$($meta)*])* pub $ident $($tokens)*
-    };
-}
-
 /// The "main macro" used for defining intrinsics.
 ///
 /// The compiler-builtins library is super platform-specific with tons of crazy
@@ -222,12 +206,12 @@ macro_rules! intrinsics {
 
         $($rest:tt)*
     ) => (
-        #[cfg(all(target_arch = "arm", not(target_os = "optee")))]
+        #[cfg(target_arch = "arm")]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }
 
-        #[cfg(all(target_arch = "arm", not(target_os = "optee")))]
+        #[cfg(target_arch = "arm")]
         pub mod $name {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
@@ -235,7 +219,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(all(target_arch = "arm", not(target_os = "optee")))]
+        #[cfg(target_arch = "arm")]
         pub mod $alias {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
@@ -243,7 +227,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(any(not(target_arch = "arm"), target_os = "optee"))]
+        #[cfg(not(target_arch = "arm"))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {

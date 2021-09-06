@@ -1,5 +1,6 @@
 /// Creates a function used by some division algorithms to compute the "normalization shift".
-#[allow(unused_macros)]
+#[doc(hidden)]
+#[macro_export]
 macro_rules! impl_normalization_shift {
     (
         $name:ident, // name of the normalization shift function

@@ -2,7 +2,8 @@
 /// binary long division to divide integers larger than what hardware division by itself can do. This
 /// function is intended for microarchitectures that have division hardware, but not fast enough
 /// multiplication hardware for `impl_trifecta` to be faster.
-#[allow(unused_macros)]
+#[doc(hidden)]
+#[macro_export]
 macro_rules! impl_delegate {
     (
         $fn:ident, // name of the unsigned division function
@@ -185,7 +186,6 @@ macro_rules! impl_delegate {
     };
 }
 
-public_test_dep! {
 /// Returns `n / d` and sets `*rem = n % d`.
 ///
 /// This specialization exists because:
@@ -193,9 +193,8 @@ public_test_dep! {
 ///    so we have to use an old fashioned `&mut u128` argument to return the remainder.
 ///  - 64-bit SPARC does not have u64 * u64 => u128 widening multiplication, which makes the
 ///    delegate algorithm strategy the only reasonably fast way to perform `u128` division.
-// used on SPARC
-#[allow(dead_code)]
-pub(crate) fn u128_divide_sparc(duo: u128, div: u128, rem: &mut u128) -> u128 {
+#[doc(hidden)]
+pub fn u128_divide_sparc(duo: u128, div: u128, rem: &mut u128) -> u128 {
     use super::*;
     let duo_lo = duo as u64;
     let duo_hi = (duo >> 64) as u64;
@@ -315,5 +314,4 @@ pub(crate) fn u128_divide_sparc(duo: u128, div: u128, rem: &mut u128) -> u128 {
             }
         }
     }
-}
 }
